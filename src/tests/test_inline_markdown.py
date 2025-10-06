@@ -1,6 +1,6 @@
 import unittest
 from textnode import TextNode, TextType
-from inline_markdown import split_nodes_delimiter
+from inline_markdown import split_nodes_delimiter, extract_markdown_images, extract_markdown_links
 
 
 class TestSplitNodesDelimiter(unittest.TestCase):
@@ -128,6 +128,84 @@ class TestSplitNodesDelimiter(unittest.TestCase):
             TextNode("code2", TextType.CODE),
         ]
         self.assertEqual(new_nodes, expected)
+
+
+class TestExtractMarkdownImages(unittest.TestCase):
+    def test_extract_markdown_images(self):
+        matches = extract_markdown_images(
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)"
+        )
+        self.assertListEqual([("image", "https://i.imgur.com/zjjcJKZ.png")], matches)
+
+    def test_extract_multiple_images(self):
+        text = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
+        matches = extract_markdown_images(text)
+        expected = [
+            ("rick roll", "https://i.imgur.com/aKaOqIh.gif"),
+            ("obi wan", "https://i.imgur.com/fJRm4Vk.jpeg")
+        ]
+        self.assertListEqual(expected, matches)
+
+    def test_extract_no_images(self):
+        text = "This is text with no images"
+        matches = extract_markdown_images(text)
+        self.assertListEqual([], matches)
+
+    def test_extract_image_with_empty_alt(self):
+        text = "Image with empty alt ![](https://i.imgur.com/test.png)"
+        matches = extract_markdown_images(text)
+        self.assertListEqual([("", "https://i.imgur.com/test.png")], matches)
+
+    def test_extract_image_ignores_links(self):
+        text = "A [link](https://example.com) and ![image](https://i.imgur.com/test.png)"
+        matches = extract_markdown_images(text)
+        self.assertListEqual([("image", "https://i.imgur.com/test.png")], matches)
+
+    def test_extract_consecutive_images(self):
+        text = "![first](url1.png)![second](url2.png)"
+        matches = extract_markdown_images(text)
+        self.assertListEqual([("first", "url1.png"), ("second", "url2.png")], matches)
+
+
+class TestExtractMarkdownLinks(unittest.TestCase):
+    def test_extract_markdown_links(self):
+        text = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+        matches = extract_markdown_links(text)
+        expected = [
+            ("to boot dev", "https://www.boot.dev"),
+            ("to youtube", "https://www.youtube.com/@bootdotdev")
+        ]
+        self.assertListEqual(expected, matches)
+
+    def test_extract_single_link(self):
+        text = "Click [here](https://www.example.com) to visit"
+        matches = extract_markdown_links(text)
+        self.assertListEqual([("here", "https://www.example.com")], matches)
+
+    def test_extract_no_links(self):
+        text = "This text has no links"
+        matches = extract_markdown_links(text)
+        self.assertListEqual([], matches)
+
+    def test_extract_link_with_empty_text(self):
+        text = "Empty link text [](https://example.com)"
+        matches = extract_markdown_links(text)
+        self.assertListEqual([("", "https://example.com")], matches)
+
+    def test_extract_links_ignores_images(self):
+        text = "A ![image](https://i.imgur.com/test.png) and [link](https://example.com)"
+        matches = extract_markdown_links(text)
+        self.assertListEqual([("link", "https://example.com")], matches)
+
+    def test_extract_consecutive_links(self):
+        text = "[first](url1.com)[second](url2.com)"
+        matches = extract_markdown_links(text)
+        self.assertListEqual([("first", "url1.com"), ("second", "url2.com")], matches)
+
+    def test_extract_mixed_images_and_links(self):
+        text = "[link1](url1) ![img](imgurl) [link2](url2)"
+        matches = extract_markdown_links(text)
+        self.assertListEqual([("link1", "url1"), ("link2", "url2")], matches)
 
 
 if __name__ == "__main__":
