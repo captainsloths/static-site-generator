@@ -1,5 +1,15 @@
 import re
+from enum import Enum
 from textnode import TextNode, TextType
+
+
+class BlockType(Enum):
+    PARAGRAPH = "paragraph"
+    HEADING = "heading"
+    CODE = "code"
+    QUOTE = "quote"
+    UNORDERED_LIST = "unordered_list"
+    ORDERED_LIST = "ordered_list"
 
 
 def split_nodes_delimiter(old_nodes, delimiter, text_type):
@@ -157,3 +167,36 @@ def markdown_to_blocks(markdown):
             result.append(stripped_block)
 
     return result
+
+
+def block_to_block_type(block):
+    # Check for heading (1-6 # characters followed by a space)
+    if re.match(r"^#{1,6} ", block):
+        return BlockType.HEADING
+
+    # Check for code block (starts and ends with 3 backticks)
+    if block.startswith("```") and block.endswith("```"):
+        return BlockType.CODE
+
+    # Check for quote block (every line starts with >)
+    lines = block.split("\n")
+    if all(line.startswith(">") for line in lines):
+        return BlockType.QUOTE
+
+    # Check for unordered list (every line starts with "- ")
+    if all(line.startswith("- ") for line in lines):
+        return BlockType.UNORDERED_LIST
+
+    # Check for ordered list (lines start with "1. ", "2. ", etc.)
+    is_ordered = True
+    for i, line in enumerate(lines):
+        expected_prefix = f"{i + 1}. "
+        if not line.startswith(expected_prefix):
+            is_ordered = False
+            break
+
+    if is_ordered and len(lines) > 0:
+        return BlockType.ORDERED_LIST
+
+    # Default to paragraph
+    return BlockType.PARAGRAPH
